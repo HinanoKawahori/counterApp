@@ -1,5 +1,12 @@
 /// Flutter関係のインポート
+import 'dart:async';
+
+import 'package:counterapp/crash_page.dart';
 import 'package:counterapp/normal_counter_page.dart';
+import 'package:counterapp/remote_config_page.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 
 /// Firebase関係のインポート
@@ -11,15 +18,25 @@ import 'firebase_options.dart';
 
 /// メイン
 void main() async {
-  /// Firebaseの初期化
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  runZonedGuarded<Future<void>>(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  /// runApp w/ Riverpod
-  runApp(const ProviderScope(child: MyApp()));
+    /// クラッシュハンドラ(Flutterフレームワーク内でスローされたすべてのエラー)
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+    /// runApp w/ Riverpod
+    runApp(const ProviderScope(child: MyApp()));
+  },
+      //_____________________
+      /// クラッシュハンドラ(Flutterフレームワーク内でキャッチされないエラー)
+      (error, stack) =>
+          FirebaseCrashlytics.instance.recordError(error, stack, fatal: true));
 }
+
+/// Firebaseの初期化
 
 /// Providerの初期化
 final counterProvider = StateNotifierProvider<Counter, int>((ref) {
@@ -62,10 +79,18 @@ class MyHomePage extends ConsumerWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.all(10),
-        children: const <Widget>[
+        children: <Widget>[
           _PagePushButton(
             buttonTitle: 'ノーマルカウンター',
             pagename: NormalCounterPage(),
+          ),
+          _PagePushButton(
+            buttonTitle: 'クラッシュページ',
+            pagename: CrashPage(),
+          ),
+          _PagePushButton(
+            buttonTitle: 'Remote Configカウンター',
+            pagename: RemoteConfigPage(),
           ),
         ],
       ),
@@ -73,6 +98,7 @@ class MyHomePage extends ConsumerWidget {
   }
 }
 
+//ページ遷移のボタン
 class _PagePushButton extends StatelessWidget {
   const _PagePushButton({
     Key? key,
@@ -91,10 +117,26 @@ class _PagePushButton extends StatelessWidget {
         child: Text(buttonTitle),
       ),
       onPressed: () {
+        //Analytics
+        //TODO 質問　この時の、buttonTitleになるのはなぜ
+        AnalyticsService().logPage(buttonTitle);
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => pagename),
         );
+      },
+    );
+  }
+}
+
+//Analytics
+class AnalyticsService {
+  //ページ遷移のログ
+  Future<void> logPage(String screenName) async {
+    await FirebaseAnalytics.instance.logEvent(
+      name: 'screen_view',
+      parameters: {
+        'firebase_screen': screenName,
       },
     );
   }
