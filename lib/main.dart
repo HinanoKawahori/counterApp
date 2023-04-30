@@ -1,12 +1,11 @@
 /// Flutter関係のインポート
 import 'dart:async';
-
+import 'package:counterapp/auth_page.dart';
 import 'package:counterapp/crash_page.dart';
 import 'package:counterapp/normal_counter_page.dart';
 import 'package:counterapp/remote_config_page.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 
 /// Firebase関係のインポート
@@ -91,6 +90,10 @@ class MyHomePage extends ConsumerWidget {
           _PagePushButton(
             buttonTitle: 'Remote Configカウンター',
             pagename: RemoteConfigPage(),
+          ),
+          const _PagePushButton(
+            buttonTitle: '認証ページ',
+            pagename: AuthPage(),
           ),
         ],
       ),
